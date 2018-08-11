@@ -46,7 +46,7 @@ class LibcloudCmds(CommonCloudFunctions) :
     locations = False
     services = False
     sizes = False
-    images = False
+    imagelist = []
     networks = False
     security_groups = False
     floating_ip_pools = False
@@ -294,7 +294,7 @@ class LibcloudCmds(CommonCloudFunctions) :
 
             _prov_netname_found, _run_netname_found = self.check_networks(vmc_name, vm_defaults)
 
-            _detected_imageids = self.check_images(vmc_name, vm_templates, _local_conn)
+            _detected_imageids = self.check_images(vmc_name, vm_templates, credentials_list)
 
             _extra_vmc_setup_complete = self.extra_vmc_setup(vmc_name, vmc_defaults, vm_defaults, vm_templates, _local_conn)
 
@@ -349,17 +349,17 @@ class LibcloudCmds(CommonCloudFunctions) :
         else :
             _prov_netname_found = True
             _run_netname_found = True
-            
+
         return _prov_netname_found, _run_netname_found
 
     @trace
-    def check_images(self, vmc_name, vm_templates, connection) :
+    def check_images(self, vmc_name, vm_templates, credentials_list) :
         '''
         TBD
         '''
         self.common_messages("IMG", { "name": vmc_name }, "checking", 0, '')
 
-        _registered_image_list = connection.list_images()
+        _registered_image_list = self.repopulate_images(credentials_list)
 
         _registered_imageid_list = []
 
@@ -768,12 +768,12 @@ class LibcloudCmds(CommonCloudFunctions) :
                 if self.use_get_image :
                     _candidate_images = LibcloudCmds.catalogs.cbtool[obj_attr_list["credentials_list"]].get_image(obj_attr_list["imageid1"])
                 else :
-                    for _image in LibcloudCmds.catalogs.cbtool[obj_attr_list["credentials_list"]].list_images() :
+                    for _image in self.repopulate_images(obj_attr_list["credentials_list"]) :
                         if _image.id == obj_attr_list["imageid1"] :
                             _candidate_images = _image
                             break
             else :
-                for _image in LibcloudCmds.catalogs.cbtool[obj_attr_list["credentials_list"]].list_images() :
+                for _image in self.repopulate_images(obj_attr_list["credentials_list"]) :
                     if _image.name == obj_attr_list["imageid1"] or _image.id == obj_attr_list["imageid1"] :
                         _candidate_images = _image
                         break
@@ -1109,13 +1109,18 @@ class LibcloudCmds(CommonCloudFunctions) :
                 raise CldOpsException("Region " + obj_attr_list["region"] + " has become unavailable. Check your configuration and try again.", 917)
 
             _mark_a = time()            
+
+            # Libcloud is not threadsafe.
+            # It clobbers this dictionary if you don't protect it.
+            _args_clone = deepcopy(self.vmcreate_kwargs)
+
             if obj_attr_list["libcloud_call_type"] == "create_node_with_mixed_arguments" :
                 _reservation = LibcloudCmds.catalogs.cbtool[_credentials_list].create_node(
                     obj_attr_list["cloud_vm_name"],
                     obj_attr_list["libcloud_size_inst"],
                     obj_attr_list["libcloud_image_inst"],
                     obj_attr_list["libcloud_location_inst"],
-                    **self.vmcreate_kwargs
+                    **_args_clone
                     )
 
             if obj_attr_list["libcloud_call_type"] == "create_node_with_keyword_arguments_only" :
@@ -1366,7 +1371,7 @@ class LibcloudCmds(CommonCloudFunctions) :
                 while not _vm_image_created and _curr_tries < _max_tries :
 
                     if not _capture_image_id :
-                        for _image in LibcloudCmds.catalogs.cbtool[_credentials_list].list_images() :
+                        for _image in self.repopulate_images(obj_attr_list["credentials_list"]) :
                             if _image.name == obj_attr_list["captured_image_name"] :
                                 _image_instance = _image
                                 _capture_image_id = _image.id
@@ -1628,12 +1633,15 @@ class LibcloudCmds(CommonCloudFunctions) :
         return get_driver(getattr(Provider, who))
 
     @trace
-    def get_my_driver(self, obj_attr_list) :
-        return LibcloudCmds.catalogs.cbtool[obj_attr_list["credentials_list"]]
+    def get_my_driver(self, credentials_list) :
+        return LibcloudCmds.catalogs.cbtool[credentials_list]
 
     @trace
-    def repopulate_images(self, obj_attr_list) :
-        LibcloudCmds.images = self.get_my_driver(obj_attr_list).list_images()
+    def repopulate_images(self, credentials_list) :
+        if not len(LibcloudCmds.imagelist) :
+            LibcloudCmds.imagelist = self.get_my_driver(credentials_list).list_images()
+
+        return LibcloudCmds.imagelist
 
     @trace
     def repopulate_keys(self, obj_attr_list) :
