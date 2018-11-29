@@ -51,7 +51,7 @@ INITIAL_VMCS_DOC += the point at\nwhich hypervisors are grouped together in a ty
 [SETUP]
 GLOBAL_OBJECT_LIST = setup,logstore,metricstore,filestore,dash_defaults,mon_defaults,
 GLOBAL_OBJECT_LIST += vpn,space,time,vmc_defaults,vm_defaults,ai_defaults,
-GLOBAL_OBJECT_LIST += aidrs_defaults,vmcrs_defaults,firs_defaults,vm_templates,
+GLOBAL_OBJECT_LIST += aidrs_defaults,vmcrs_defaults,firs_defaults,vm_templates,container_templates,
 GLOBAL_OBJECT_LIST += ai_templates,aidrs_templates,vmcrs_templates,fi_templates,
 GLOBAL_OBJECT_LIST += firs_templates,query,admission_control,api_defaults,gui_defaults,build
 
@@ -211,6 +211,8 @@ ABORT_AFTER_SSH_UPLOAD_FAILURE = $True
 PREPARE_WORKLOAD = None
 PREPARE_WORKLOAD_NAMES = None
 PREPARE_IMAGE_NAME = None
+NEST_CONTAINERS_ENABLED = $False
+NEST_CONTAINERS_BASE_IMAGE = none
 
 [AI_DEFAULTS]
 USERNAME = $MAIN_USERNAME
@@ -486,3 +488,6 @@ MANAGEMENT_IP = 127.0.0.1
 MANAGEMENT_PORT = 1195
 
 [AI_TEMPLATES]
+
+[CONTAINER_TEMPLATES]
+TINYVM = imageids:1, imageid1:ibmcb/ubuntu_cb_nullworkload

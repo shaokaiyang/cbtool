@@ -1295,7 +1295,89 @@ function comment_lines {
 }
 export -f comment_lines
 
+function replicate_to_container_if_nested {
+	nested=$1
+
+	if [ x"${nested}" == x"True" ] ; then
+		syslog_netcat "Already inside the container."
+		return 1
+	fi
+
+	nest_containers_enabled=`get_my_vm_attribute nest_containers_enabled`
+
+	if [ x"${nest_containers_enabled}" != x"True" ] ; then
+		syslog_netcat "Nested container not requested."
+		return 2
+	fi
+
+	username=$(whoami)
+	userpath="/home"
+	if [ ${username} == "root" ] ; then 
+		userpath="/"
+	fi
+
+	# FIXME 
+	# 1. Add docker startup upon VM restart with the load manager too
+	# 2. Choose the container's image using configuration options
+	# 3. Check for errors, return codes
+	# 4. execute linux-independent way to stop SSH
+
+	# We're going to transfer SSH control into the priveleged container
+	# blowawaypids sshd # doesn't work. Ubuntu restarts it.
+	systemctl stop sshd
+	
+	syslog_netcat "Downloading container image..."
+	image="ibmcb/ubuntu_cb_nullworkload"
+	docker pull ${image}
+
+	syslog_netcat "Image pulled, starting container..."
+
+	docker run -u ${username} -it -d --name cbnested --privileged --net host --env CB_SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" -v ~/:/tmp/userhome ${image} bash -c "sudo rm -rf ${userpath}/${username}; sudo cp -a /tmp/userhome ${userpath}/${username}; sudo chown -R ${username}:${username} ${userpath}/${username}; sudo bash /etc/my_init.d/inject_pubkey_and_start_ssh.sh"
+
+	syslog_netcat "Container started, settling..."
+
+	# Figure out when the container is ready
+	ATTEMPTS=20
+	while true ; do
+		out=$(docker exec -u ${username} --privileged cbnested bash -c "if [ x\"\$(ps -ef | grep sshd | grep -v grep)\" != x ] ; then exit 0 ; else exit 2 ; fi" 2>&1)
+		rc=$?
+		if [ $rc -gt 0 ] ; then
+			syslog_netcat "Return code: $rc $out"
+			((ATTEMPTS=ATTEMPTS-1))
+			if [ ${ATTEMPTS} -gt 0 ] ; then
+				syslog_netcat "Still waiting on container startup. Attempts left: ${ATTEMPTS}"
+				sleep 2
+				continue
+			else
+				syslog_netcat "No attempts left. Container startup failed."
+				return 3
+			fi
+		fi
+		syslog_netcat "Container is ready."
+		break
+	done
+	
+	# Exec the remaining post boot commands within the container
+
+	syslog_netcat "Running nested steps..."
+	# FIXME: Return this error code and check for error in parent function
+	docker exec -u ${username} --privileged cbnested bash -c "cd; source ~/cbtool/scripts/common/cb_common.sh; syslog_netcat 'Running post_boot inside container...'; post_boot_steps True"
+
+	return 0
+}
+
+export -f replicate_to_container_if_nested
+
 function post_boot_steps {
+
+	replicate_to_container_if_nested $1
+
+	if [ $? -eq 0 ] ; then
+		syslog_netcat "Container started, skipping VM remaining steps."
+		return
+	fi
+
+	automount_data_dirs
 
     if [[ ! -e /usr/lib64 ]]
     then
