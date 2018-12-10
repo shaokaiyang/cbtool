@@ -1358,6 +1358,11 @@ class ActiveObjectOperations(BaseObjectOperations) :
             if not _status :
                 if "qemu_debug_port_base" in obj_attr_list :
                     _status, _fmsg = self.auto_allocate_port("qemu_debug", obj_attr_list, "VMC", obj_attr_list["vmc"], obj_attr_list["vmc_cloud_ip"])
+
+            if obj_attr_list["nest_containers_enabled"].strip().lower() == "true" :
+                # copy over base image name
+                # copy over 
+                obj_attr_list[
                 
         except KeyError, msg :
             _status = 40

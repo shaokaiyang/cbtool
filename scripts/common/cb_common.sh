@@ -1322,12 +1322,16 @@ function replicate_to_container_if_nested {
 	# 3. Check for errors, return codes
 	# 4. execute linux-independent way to stop SSH
 
+	echo '{ "insecure-registries" : ["10.9.0.1:5000"] }' > /etc/docker/daemon.json
+    service docker restart
+
 	# We're going to transfer SSH control into the priveleged container
 	# blowawaypids sshd # doesn't work. Ubuntu restarts it.
 	systemctl stop sshd
 	
 	syslog_netcat "Downloading container image..."
-	image="ibmcb/ubuntu_cb_nullworkload"
+	#image="ibmcb/ubuntu_cb_nullworkload"
+	image="10.9.0.1:5000/ubuntu_cb_nullworkload"
 	docker pull ${image}
 
 	syslog_netcat "Image pulled, starting container..."
@@ -1361,7 +1365,7 @@ function replicate_to_container_if_nested {
 
 	syslog_netcat "Running nested steps..."
 	# FIXME: Return this error code and check for error in parent function
-	docker exec -u ${username} --privileged cbnested bash -c "cd; source ~/cbtool/scripts/common/cb_common.sh; syslog_netcat 'Running post_boot inside container...'; post_boot_steps True"
+	docker exec -u ${username} --privileged cbnested bash -c "cd; source ~/cbtool/scripts/common/cb_common.sh; syslog_netcat 'Running post_boot inside container...'; ~/cbtool/scripts/common/cb_post_boot_container.sh"
 
 	return 0
 }
@@ -1377,7 +1381,19 @@ function post_boot_steps {
 		return
 	fi
 
-	automount_data_dirs
+	if [[ $(echo $dir | grep -c common) -eq 1 ]]
+	then
+		ln -sf $dir/* ~
+	fi
+
+    sudo ln -sf ${dir}/../../3rd_party/monitor-core ~
+    sudo ln -sf ${dir}/../../util ~
+
+    if [[ x"${my_ai_uuid}" != x"none" ]]
+    then
+        syslog_netcat "Copying application-specific scripts to the home directory"
+        ln -sf "${dir}/../${my_base_type}/"* ~
+    fi
 
     if [[ ! -e /usr/lib64 ]]
     then
@@ -1430,19 +1446,11 @@ function post_boot_steps {
     then
         restart_ntp
     fi
-    sudo ln -sf ${dir}/../../3rd_party/monitor-core ~
-    sudo ln -sf ${dir}/../../util ~
 
     # for 32-bit VMs
     if [[ ! -e /usr/lib64/ganglia && -e /usr/lib/ganglia ]]
     then
         sudo ln -sf /usr/lib/ganglia/ /usr/lib64/ganglia
-    fi
-
-    if [[ x"${my_ai_uuid}" != x"none" ]]
-    then
-        syslog_netcat "Copying application-specific scripts to the home directory"
-        ln -sf "${dir}/../${my_base_type}/"* ~
     fi
 
     if [[ x"${collect_from_guest}" == x"true" ]]
@@ -1455,6 +1463,7 @@ function post_boot_steps {
         syslog_netcat "Bypassing the gmond and gmetad restart"
     fi
 
+	automount_data_dirs
 }
     
 function stop_ganglia {
