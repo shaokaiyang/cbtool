@@ -40,6 +40,8 @@ ATTEMPTS=3
 
 SETUP_TIME=20
 
+NEST_EXPORTED_HOME="/tmp/userhome"
+
 ai_mapping_file=~/ai_mapping_file.txt
 
 PGREP_CMD=`which pgrep`
@@ -447,7 +449,7 @@ function get_attached_volumes {
         ROOT="/" # default
         nest_containers_enabled=`get_my_vm_attribute nest_containers_enabled`
         if [[ x"${nest_containers_enabled}" == x"True" ]] ; then
-            ROOT="/tmp/userhome"
+            ROOT=${NEST_EXPORTED_HOME}
         fi
 
         ROOT_PARTITION=$(sudo mount | grep "${ROOT} " | cut -d ' ' -f 1)
@@ -1332,10 +1334,6 @@ function replicate_to_container_if_nested {
 		userpath="/"
 	fi
 
-	# FIXME 
-	# 1. Add docker startup upon VM restart with the load manager too
-	# 2. Check for errors, return codes
-
     # Support using a private registry.
 	nest_containers_repository=`get_my_vm_attribute nest_containers_repository`
 
@@ -1364,7 +1362,7 @@ function replicate_to_container_if_nested {
     # the correct priveleges, then run the entrypoint script already provided
     # which then starts SSH on its own. Because we're using host networking, everything
     # works as-is without any changes.
-	docker run -u ${username} -it -d --name cbnested --privileged --net host --env CB_SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" -v ~/:/tmp/userhome ${image} bash -c "sudo rm -rf ${userpath}/${username}; sudo cp -a /tmp/userhome ${userpath}/${username}; sudo chown -R ${username}:${username} ${userpath}/${username}; sudo bash /etc/my_init.d/inject_pubkey_and_start_ssh.sh"
+	docker run -u ${username} -it -d --name cbnested --privileged --net host --env CB_SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" -v ~/:${NEST_EXPORTED_HOME} ${image} bash -c "sudo rm -rf ${userpath}/${username}; sudo cp -a ${NEST_EXPORTED_HOME} ${userpath}/${username}; sudo chown -R ${username}:${username} ${userpath}/${username}; sudo bash /etc/my_init.d/inject_pubkey_and_start_ssh.sh"
 
 	syslog_netcat "Container started, settling..."
 
@@ -1389,13 +1387,12 @@ function replicate_to_container_if_nested {
 		break
 	done
 	
-	# Exec the remaining post boot commands within the container
-
+	# Finally, execute the remaining post boot commands within the container
 	syslog_netcat "Running nested steps..."
 	# FIXME: Return this error code and check for error in parent function
-	docker exec -u ${username} --privileged cbnested bash -c "cd; source ~/cbtool/scripts/common/cb_common.sh; syslog_netcat 'Running post_boot inside container...'; ~/cbtool/scripts/common/cb_post_boot_container.sh"
+	docker exec -u ${username} --privileged cbnested bash -c "cd; source ~/cbtool/scripts/common/cb_common.sh; syslog_netcat 'Running post_boot inside container...'; ~/cbtool/scripts/common/cb_post_boot_container.sh; exit \$?"
 
-	return 0
+	return $? 
 }
 
 export -f replicate_to_container_if_nested
@@ -1817,6 +1814,10 @@ function get_offline_ip {
     ip -o addr show $(ip route | grep default | grep -oE "dev [a-z]+[0-9]+" | sed "s/dev //g") | grep -Eo "[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*" | grep -v 255
 }
 
+# Some things are missing here:
+# 1. Re-mounting external volumes
+# 2. Starting up docker nested containers
+# 3. Ganglia, redis, and friends.
 function setup_rclocal_restarts {
     if [ x"$(grep cb_start_load_manager.sh /etc/rc.local)" == x ]
     then
