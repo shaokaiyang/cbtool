@@ -159,3 +159,5 @@ YATINYVM = size:512mb, imageids:1, imageid1:cloudbench-nullworkload-on-1604.0518
 YCSB = size:4gb, imageids:1, imageid1:cloudbench-ycsb-cassandra-on-1604.051818-1
 # 40248606 == ubuntu 18.04, currently 
 NEST_CONTAINERS_BASE_IMAGE = size:4gb, imageids:1, imageid1:40248606, cloudinit_packages:openvpn;bc;jq;docker.io;python
+
+[CONTAINER_TEMPLATES]

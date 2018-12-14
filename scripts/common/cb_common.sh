@@ -1299,7 +1299,7 @@ function replicate_to_container_if_nested {
 	nested=$1
 
 	if [ x"${nested}" == x"True" ] ; then
-		syslog_netcat "Already inside the container."
+		syslog_netcat "Inside the container now."
 		return 1
 	fi
 
@@ -1318,24 +1318,37 @@ function replicate_to_container_if_nested {
 
 	# FIXME 
 	# 1. Add docker startup upon VM restart with the load manager too
-	# 2. Choose the container's image using configuration options
-	# 3. Check for errors, return codes
-	# 4. execute linux-independent way to stop SSH
+	# 2. Check for errors, return codes
+	# 3. Mounting the external volume isn't working 
 
-	echo '{ "insecure-registries" : ["10.9.0.1:5000"] }' > /etc/docker/daemon.json
-    service docker restart
+    # Support using a private registry.
+	nest_containers_repository=`get_my_vm_attribute nest_containers_repository`
 
-	# We're going to transfer SSH control into the priveleged container
-	# blowawaypids sshd # doesn't work. Ubuntu restarts it.
-	systemctl stop sshd
-	
-	syslog_netcat "Downloading container image..."
-	#image="ibmcb/ubuntu_cb_nullworkload"
-	image="10.9.0.1:5000/ubuntu_cb_nullworkload"
+    # We need to allow for accessing a private registry without HTTPS, if requested
+    # According to the docks, /etc/docker/daemon.json is supposed to be linux distribution-independent
+	nest_containers_insecure_registry=`get_my_vm_attribute nest_containers_insecure_registry`
+	if [ x"${nest_containers_insecure_registry}" == x"True" ] ; then
+        echo "{ \"insecure-registries\" : [\"${nest_containers_repository}\"] }" > /etc/docker/daemon.json
+    fi
+
+    service_restart_enable docker
+
+	imageid=`get_my_vm_attribute container_role`
+    image="${nest_containers_repository}/${imageid}"
+	syslog_netcat "Downloading container image from: ${image}"
+
+    # This step can be cached if the user builds an snapshot that has already done the pull.
 	docker pull ${image}
 
 	syslog_netcat "Image pulled, starting container..."
 
+	# We're going to transfer SSH control into the priveleged container
+	service_stop_disable sshd
+
+    # We export the entire home directory of the VM into the container and relabel it with
+    # the correct priveleges, then run the entrypoint script already provided
+    # which then starts SSH on its own. Because we're using host networking, everything
+    # works as-is without any changes.
 	docker run -u ${username} -it -d --name cbnested --privileged --net host --env CB_SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" -v ~/:/tmp/userhome ${image} bash -c "sudo rm -rf ${userpath}/${username}; sudo cp -a /tmp/userhome ${userpath}/${username}; sudo chown -R ${username}:${username} ${userpath}/${username}; sudo bash /etc/my_init.d/inject_pubkey_and_start_ssh.sh"
 
 	syslog_netcat "Container started, settling..."
