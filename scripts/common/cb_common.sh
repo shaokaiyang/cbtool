@@ -91,7 +91,11 @@ fi
 SCRIPT_NAME=$(echo "$BASH_SOURCE" | sed -e "s/.*\///g")
 
 function check_container {
-    if [[ $(sudo cat /proc/1/cgroup | grep -c docker) -ne 0 ]]
+	nest_containers_enabled=`get_my_vm_attribute nest_containers_enabled`
+
+    # If we're using nesting (workload container inside a VM),
+    # we still want to mount external volumes in the container.
+    if [[ $(sudo cat /proc/1/cgroup | grep -c docker) -ne 0 ]] && [[ x"${nest_containers_enabled}" != x"True" ]]
     then
         export IS_CONTAINER=1
         if [[ -z $LC_ALL ]]
@@ -435,9 +439,21 @@ function get_attached_volumes {
     
     if [[ $IS_CONTAINER -eq 0 ]]
     then
+        # If we're using nested containers, then /dev/xxx may not show up
+        # as a device the mount tab. You'll get 'overlay' or things like that.
+        # Since we're exporting the home directory of guest VM into the container
+        # we can use that mountpoint to figure out where root really is.
+
+        ROOT="/" # default
+        nest_containers_enabled=`get_my_vm_attribute nest_containers_enabled`
+        if [[ x"${nest_containers_enabled}" == x"True" ]] ; then
+            ROOT="/tmp/userhome"
+        fi
+
+        ROOT_PARTITION=$(sudo mount | grep "${ROOT} " | cut -d ' ' -f 1)
+
         # Wierdo clouds, like Amazon expose naming schemes like `/dev/nvme0n1p1` for the root volume.
         # So, we need a beefier regex.
-        ROOT_PARTITION=$(sudo mount | grep "/ " | cut -d ' ' -f 1)
         ROOT_VOLUME=$(echo "$ROOT_PARTITION" | sed -e "s/\(.*[0-9]\)[a-z]\+[0-9]\+$/\1/g")
         
         if [[ ${ROOT_PARTITION} == ${ROOT_VOLUME} ]] 
@@ -1319,7 +1335,6 @@ function replicate_to_container_if_nested {
 	# FIXME 
 	# 1. Add docker startup upon VM restart with the load manager too
 	# 2. Check for errors, return codes
-	# 3. Mounting the external volume isn't working 
 
     # Support using a private registry.
 	nest_containers_repository=`get_my_vm_attribute nest_containers_repository`
