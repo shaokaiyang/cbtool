@@ -255,6 +255,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _status = 0
 
         except Exception, e:
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _msg = "Error connecting " + self.get_description() + ": " + str(e)
             cbdebug(_msg, True)
             _status = 23
@@ -314,6 +316,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _status = 2
 
         except Exception, msg :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _fmsg = str(msg)
             _status = 23
 
@@ -496,6 +500,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _status = 2
 
         except Exception, msg :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _fmsg = str(msg)
             _status = 23
     
@@ -556,6 +562,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _status = 2
 
         except Exception, msg :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _fmsg = str(msg)
             _status = 23
 
@@ -592,6 +600,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _fmsg = str(obj.msg)
 
         except Exception, msg :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _fmsg = str(msg)
             _status = 23
     
@@ -625,6 +635,8 @@ class LibcloudCmds(CommonCloudFunctions) :
                                 _nr_instances += 1
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _nr_instances = "NA"
             _fmsg = "(While counting instance(s) through API call \"list\") " + str(e)
@@ -718,6 +730,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             return True
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _msg = "Could not retrieve IP addresses for object " + obj_attr_list["uuid"]
             _msg += " from " + self.get_description() + " \"" + obj_attr_list["cloud_name"] + ": " + str(e)
             cberr(_msg)
@@ -787,6 +801,8 @@ class LibcloudCmds(CommonCloudFunctions) :
                 _status = 0
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
 
@@ -811,6 +827,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             return node and node.state == NodeState.RUNNING
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
             raise CldOpsException(_fmsg, _status)
@@ -844,6 +862,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _status = 0
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
             
@@ -951,6 +971,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _fmsg = str(obj.msg)
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
     
@@ -1317,6 +1339,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _fmsg = str(obj.msg)
 
         except Exception, msg :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _fmsg = str(msg)
             _status = 23
     
@@ -1400,6 +1424,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _fmsg = str(obj.msg)
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
 
@@ -1464,6 +1490,8 @@ class LibcloudCmds(CommonCloudFunctions) :
                             obj_attr_list["mgt_202_runstate_request_sent"] = int(time()) - int(obj_attr_list["mgt_201_runstate_request_originated"])
                         firsttime = False
                     except Exception, e :
+                        for line in traceback.format_exc().splitlines() :
+                            cbwarn(line, True)
                         cbwarn(str(e), True)
 
                     cbdebug(self.get_description() + " request still not complete. Will try again momentarily...", True)
@@ -1491,6 +1519,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _fmsg = str(obj.msg)
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
 
@@ -1561,6 +1591,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _status = 0
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
             
@@ -1593,6 +1625,8 @@ class LibcloudCmds(CommonCloudFunctions) :
             _status = 0
 
         except Exception, e :
+            for line in traceback.format_exc().splitlines() :
+                cbwarn(line, True)
             _status = 23
             _fmsg = str(e)
 
