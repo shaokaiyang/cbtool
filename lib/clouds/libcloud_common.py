@@ -223,21 +223,21 @@ class LibcloudCmds(CommonCloudFunctions) :
 
     @trace
     def get_adapter(self, credentials_list) :
-	'''
-	The next step to debugging libcloud headers is to make sure that we
-	reset the StringIO stream before and after each request to libcloud.
-	That way, when there is a python exception, we only get the header logs
+        '''
+        The next step to debugging libcloud headers is to make sure that we
+        reset the StringIO stream before and after each request to libcloud.
+        That way, when there is a python exception, we only get the header logs
         for the last request and not for requests that are irrelevant.
-	'''
+        '''
         stream.truncate(0)
-	return LibcloudCmds.catalogs.cbtool[credentials_list]
+        return LibcloudCmds.catalogs.cbtool[credentials_list]
 
     @trace
     def dump_httplib_headers(self) :
-	'''
-	Finally, dump the httplib header logs (if any) and re-truncate the stream
-	for the next error.
-	'''
+        '''
+        Finally, dump the httplib header logs (if any) and re-truncate the stream
+        for the next error.
+        '''
         cberr(stream.getvalue().strip().replace("\n\n", "\n"), True)
         stream.truncate(0)
 
@@ -508,7 +508,6 @@ class LibcloudCmds(CommonCloudFunctions) :
             for credentials_list in obj_attr_list["credentials"].split(";"):
                 _status, _msg, _local_conn, _hostname = self.connect(credentials_list)
     
-            self.dump_httplib_headers()
             _running_instances = True
             while _running_instances :
                 _running_instances = False
@@ -519,7 +518,6 @@ class LibcloudCmds(CommonCloudFunctions) :
                     self.common_messages("VMC", obj_attr_list, "cleaning up vms", 0, '')
 
                     _reservations = self.get_adapter(credentials_list).list_nodes(*self.get_list_node_args(obj_attr_list))
-		    self.dump_httplib_headers()
 
                     for _reservation in _reservations :
                         if _reservation.name.count("cb-" + obj_attr_list["username"] + "-" + obj_attr_list["cloud_name"]) :
